@@ -5,6 +5,8 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 enum command_type
 {
@@ -736,21 +738,116 @@ std::string output_file_name(std::string if_name)
     return of_name;
 }
 
+// std::vector<std::string> get_file_names(std::string dir_name)
+// {
+
+// } 
+
+bool check_dir_file(std::string name)
+{
+    for(int i = 0; i < name.size() ; i++)
+    {
+        if(name[i] == '.')
+        {
+            if(name[i+1] == 'v' && name[i+2] == 'm')
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+bool check_vm(std::string name)
+{
+    for(int i = 0; i<name.size();i++)
+    {
+        if(name[i] == '.')
+        {
+            if(name[i+1] == 'v' && name[i+2] == 'm' && (i+3) == name.size())
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 
 int main(int argc,char *argv[])
 {
 
-    for (int i = 1; i < argc; i++)
+    std::vector<std::string> vm_file_name;
+    bool dir_or_not;
+
+    if(argc == 2)
     {
-        parser p{argv[i]};
-        std::string out_name = output_file_name(argv[i]);
-        code_writer cw(out_name);
-        while(p.has_more_commands())
+        if(check_dir_file(argv[1]))
         {
-            p.advance();
-            cw.code_generator_main(p.ret_commandtype(),p.argument_1(),p.argument_2());
+        for (const auto & entry : fs::directory_iterator(argv[1]))
+            if(check_vm(entry.path()))
+            {
+                vm_file_name.push_back(entry.path());
+                dir_or_not = true;
+            }
+        }
+        else if(check_vm(argv[1]))
+        {
+            vm_file_name.push_back(argv[1]);
+            dir_or_not  = false;
+        }
+    
+        else 
+        {
+            std::runtime_error("Invalid file name");
         }
     }
+    else
+    {
+        for(int i = 1; i < argc; i++)
+        {
+            if(check_vm(argv[i]))
+            {
+                vm_file_name.push_back(argv[i]);
+                dir_or_not = false;
+            }
+            else 
+            {
+                std::runtime_error("Invalid file name");
+            }
+        }
+    }
+
+    if(dir_or_not)
+    {
+        std::string out_name = std::string(argv[1]) + "/" + argv[1] + ".asm";
+        code_writer cw(out_name);
+        for (int i = 0; i < vm_file_name.size(); i++)
+        {
+            parser p{vm_file_name[i]};
+            while(p.has_more_commands())
+            {
+                p.advance();
+                cw.code_generator_main(p.ret_commandtype(),p.argument_1(),p.argument_2());
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < vm_file_name.size(); i++)
+        {
+            parser p{vm_file_name[i]};
+            std::string out_name = output_file_name(vm_file_name[i]);
+            code_writer cw(out_name);
+            while(p.has_more_commands())
+            {
+                p.advance();
+                cw.code_generator_main(p.ret_commandtype(),p.argument_1(),p.argument_2());
+            }
+        }
+    }
+    
 
 
     
