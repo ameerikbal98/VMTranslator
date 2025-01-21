@@ -57,7 +57,16 @@ public:
 
         if(no_comment_line.size() > 0)
         {
-            commands.push_back(no_comment_line);
+
+            std::string filtered_line;
+
+            for(char c: no_comment_line)
+            {
+                if(c == '\t')
+                    continue;
+                filtered_line.push_back(c);
+            }
+            commands.push_back(filtered_line);
         }
     }
 
@@ -629,6 +638,30 @@ private:
         code.append("M=!D\n");
     }
 
+    //generate code for call...........................................................................................
+    void label_code_generator(std::string arg1)
+    {
+        code.append(std::string("//label") + " " + arg1 + "\n");
+        code.append(std::string("(") + arg1 + ")" + "\n");
+    }   
+    //GOTO instructions...........................................................................................
+    void goto_label_generator(std::string arg1)
+    {
+        code.append(std::string("//goto") + " " + arg1 + "\n");
+        code.append(std::string("@") + arg1 + "\n");
+        code.append("0;JMP\n");
+    }
+
+    void if_goto_generator(std::string arg1)
+    {
+        code.append(std::string("//if-goto" + arg1 + "\n"));
+        code.append("@0\n");
+        code.append("AM=M-1\n");
+        code.append("D=M\n");
+        code.append(std::string("@") + arg1 + "\n");
+        code.append("D;JNE\n");
+    }
+
 
 
 
@@ -709,6 +742,21 @@ public:
             push_code_generator(arg1,arg2);
         }
 
+        else if(type == command_type::C_LABEL)
+        {
+            label_code_generator(arg1);
+        }
+
+        else if(type == command_type::C_GOTO)
+        {
+            goto_label_generator(arg1);
+        }
+
+        else if(type == command_type::C_IF)
+        {
+            if_goto_generator(arg1);
+        }
+
         output_handle << code;
     }
 
@@ -720,6 +768,10 @@ public:
     }
 
 };
+//............................................................................................................................................................................
+//end of class.....................................................................................................................................................................
+
+
 
 std::string output_file_name(std::string if_name)
 {
@@ -818,6 +870,8 @@ int main(int argc,char *argv[])
             }
         }
     }
+
+    std::cout << dir_or_not << "  " << vm_file_name[0] << std::endl;
 
     if(dir_or_not)
     {
