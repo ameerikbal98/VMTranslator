@@ -1,4 +1,4 @@
-//This code is a VM translator which translates VM code from nand to tetris course to Hack machine code........................................
+//This code is a VM translator which translates VM code to Hack machine code........................................
 //written by Ameer Ikbal.......................................................................................................................
 
 #include <iostream>
@@ -662,6 +662,178 @@ private:
         code.append("D;JNE\n");
     }
 
+    //generate code for call command 
+
+    void call_code_generator(std::string arg1,std::string arg2)
+    {
+        code.append(std::string("//call ") + arg1 + " " + arg2 + "\n");
+        //push return address
+        code.append(std::string("@call_return_") + arg1 + "\n" );
+        code.append("D=A\n");
+        code.append("@0\n");
+        code.append("A=M\n");
+        code.append("M=D\n");
+        code.append("A=A+1\n");
+        code.append("D=A\n");
+        code.append("@0\n");
+        code.append("M=D\n");
+        
+
+        //push LCL to the stack
+        code.append("@1\n");
+        code.append("D=M\n");
+        code.append("@0\n");
+        code.append("A=M\n");
+        code.append("M=D\n");
+        code.append("A=A+1\n");
+        code.append("D=A\n");
+        code.append("@0\n");
+        code.append("M=D\n");
+
+        //push ARG to the stack
+        code.append("@2\n");
+        code.append("D=M\n");
+        code.append("@0\n");
+        code.append("A=M\n");
+        code.append("M=D\n");
+        code.append("A=A+1\n");
+        code.append("D=A\n");
+        code.append("@0\n");
+        code.append("M=D\n");
+
+        //push THIS to the stack
+        code.append("@3\n");
+        code.append("D=M\n");
+        code.append("@0\n");
+        code.append("A=M\n");
+        code.append("M=D\n");
+        code.append("A=A+1\n");
+        code.append("D=A\n");
+        code.append("@0\n");
+        code.append("M=D\n");
+
+        //push THAT to the stack
+        code.append("@4\n");
+        code.append("D=M\n");
+        code.append("@0\n");
+        code.append("A=M\n");
+        code.append("M=D\n");
+        code.append("A=A+1\n");
+        code.append("D=A\n");
+        code.append("@0\n");
+        code.append("M=D\n");
+
+        //set arg to SP-n-5
+        code.append("@0\n");
+        code.append("D=M\n");
+        code.append("@5\n");
+        code.append("D=D-A\n");
+        code.append(std::string("@") + arg1 + "\n");
+        code.append("D=D-A\n");
+        code.append("@2\n");
+        code.append("M=D\n");
+
+        //LCL = SP
+        code.append("@0\n");
+        code.append("D=M\n");
+        code.append("@1\n");
+        code.append("M=D\n");
+
+        //return label
+        code.append(std::string("@") + arg1 + "\n");
+        code.append("0;JMP\n");
+        code.append(std::string("(call_return_") + arg1 + ")\n");
+    }
+
+
+    void function_code_generator(std::string arg1, std::string arg2)
+    {
+        code.append(std::string("//function ") + arg1 + " " + arg2 + "\n");
+        code.append(std::string("(") + arg1 + ")\n");
+        code.append("@0\n");
+        code.append("A=M\n");
+
+        //push arg2 times 0 to the stack
+        for(int i = 0; i< std::stoi(arg2); i++)
+        {
+            code.append("//push constant 0\n");
+            code.append("M=0\n");
+            code.append("A=A+1\n");
+        }
+
+        code.append("D=A\n");
+        code.append("@0\n");
+        code.append("M=D\n");
+    }
+
+    void return_code_generator()
+    {
+        code.append("//return\n");
+
+        code.append("//store FRAME = LCL\n");
+        code.append("@1\n");
+        code.append("D=M\n");
+        code.append("@FRAME\n");
+        code.append("M=D\n");
+
+        code.append("//STORE THE return address to RET\n");
+        code.append("@5\n");
+        code.append("D=D-A\n");
+        code.append("A=D\n");
+        code.append("D=M\n");
+        code.append("@RET\n");
+        code.append("M=D\n");
+
+        code.append("// *ARG = POP()\n");
+        code.append("@0\n");
+        code.append("A=M-1\n");
+        code.append("D=M\n");
+        code.append("@2\n");
+        code.append("A=M\n");
+        code.append("M=D\n");
+
+        code.append("// SP = ARG + 1\n");
+        code.append("@2\n");
+        code.append("D=M+1\n");
+        code.append("@0\n");
+        code.append("M=D\n");
+
+
+        code.append("//copy that\n");
+        code.append("@FRAME\n");
+        code.append("AM=M-1\n");
+        code.append("D=M\n");
+        code.append("@4\n");
+        code.append("M=D\n");
+
+        code.append("//copy this\n");
+        code.append("@FRAME\n");
+        code.append("AM=M-1\n");
+        code.append("D=M\n");
+        code.append("@3\n");
+        code.append("M=D\n");
+
+        code.append("//copy ARG\n");
+        code.append("@FRAME\n");
+        code.append("AM=M-1\n");
+        code.append("D=M\n");
+        code.append("@2\n");
+        code.append("M=D\n");
+
+        code.append("//copy LCL\n");
+        code.append("@FRAME\n");
+        code.append("AM=M-1\n");
+        code.append("D=M\n");
+        code.append("@1\n");
+        code.append("M=D\n");
+
+
+        code.append("@RET\n");
+        code.append("A=M\n");
+        code.append("0;JMP\n");
+
+    }
+
 
 
 
@@ -755,6 +927,14 @@ public:
         else if(type == command_type::C_IF)
         {
             if_goto_generator(arg1);
+        }
+        else if(type == command_type::C_FUNCTION)
+        {
+            function_code_generator(arg1,arg2);
+        }
+        else if(type == command_type::C_RETURN)
+        {
+            return_code_generator();
         }
 
         output_handle << code;
