@@ -243,6 +243,8 @@ private:
     std::string code;
     std::string static_name;
     int label_count = 0;
+    int code_num = 1;
+    bool is_init = true;
 
 
 private:
@@ -654,7 +656,7 @@ private:
 
     void if_goto_generator(std::string arg1)
     {
-        code.append(std::string("//if-goto" + arg1 + "\n"));
+        code.append(std::string("//if-goto " + arg1 + "\n"));
         code.append("@0\n");
         code.append("AM=M-1\n");
         code.append("D=M\n");
@@ -667,82 +669,79 @@ private:
     void call_code_generator(std::string arg1,std::string arg2)
     {
         code.append(std::string("//call ") + arg1 + " " + arg2 + "\n");
-        //push return address
-        code.append(std::string("@call_return_") + arg1 + "\n" );
+        code.append("//push return address\n");
+        code.append(std::string("@call_return_") + arg1 + "." + std::to_string(label_count) + "\n" );
         code.append("D=A\n");
         code.append("@0\n");
         code.append("A=M\n");
         code.append("M=D\n");
-        code.append("A=A+1\n");
-        code.append("D=A\n");
+        code.append("D=A+1\n");
         code.append("@0\n");
         code.append("M=D\n");
         
 
-        //push LCL to the stack
+        code.append("//push LCL to the stack\n");
         code.append("@1\n");
         code.append("D=M\n");
         code.append("@0\n");
         code.append("A=M\n");
         code.append("M=D\n");
-        code.append("A=A+1\n");
-        code.append("D=A\n");
+        code.append("D=A+1\n");
         code.append("@0\n");
         code.append("M=D\n");
 
-        //push ARG to the stack
+        code.append("//push ARG to the stack\n");
         code.append("@2\n");
         code.append("D=M\n");
         code.append("@0\n");
         code.append("A=M\n");
         code.append("M=D\n");
-        code.append("A=A+1\n");
-        code.append("D=A\n");
+        code.append("D=A+1\n");
         code.append("@0\n");
         code.append("M=D\n");
 
-        //push THIS to the stack
+        code.append("//push THIS to the stack\n");
         code.append("@3\n");
         code.append("D=M\n");
         code.append("@0\n");
         code.append("A=M\n");
         code.append("M=D\n");
-        code.append("A=A+1\n");
-        code.append("D=A\n");
+        code.append("D=A+1\n");
         code.append("@0\n");
         code.append("M=D\n");
 
-        //push THAT to the stack
+        code.append("//push THAT to the stack\n");
         code.append("@4\n");
         code.append("D=M\n");
         code.append("@0\n");
         code.append("A=M\n");
         code.append("M=D\n");
-        code.append("A=A+1\n");
-        code.append("D=A\n");
+        code.append("D=A+1\n");
         code.append("@0\n");
         code.append("M=D\n");
 
-        //set arg to SP-n-5
+        code.append("//set arg to SP-n-5\n");
         code.append("@0\n");
         code.append("D=M\n");
         code.append("@5\n");
         code.append("D=D-A\n");
-        code.append(std::string("@") + arg1 + "\n");
+        code.append(std::string("@") + arg2 + "\n");
         code.append("D=D-A\n");
         code.append("@2\n");
         code.append("M=D\n");
 
-        //LCL = SP
+        code.append("//LCL = SP\n");
         code.append("@0\n");
         code.append("D=M\n");
         code.append("@1\n");
         code.append("M=D\n");
 
-        //return label
+        code.append("//return label\n");
         code.append(std::string("@") + arg1 + "\n");
         code.append("0;JMP\n");
-        code.append(std::string("(call_return_") + arg1 + ")\n");
+        code.append(std::string("(call_return_") + arg1 + "." + std::to_string(label_count) + ")\n");
+
+        label_count+=1;
     }
 
 
@@ -834,6 +833,18 @@ private:
 
     }
 
+    void init_code()
+    {
+        code.append("//Bootstrap code\n");
+        code.append("@261\n");
+        code.append("D=A\n");
+        code.append("@0\n");
+        code.append("M=D\n");
+        code.append("@Sys.init\n");
+        code.append("0;JMP\n");
+
+    }
+
 
 
 
@@ -841,18 +852,36 @@ public:
     explicit code_writer(const std::string filename)
     {
         output_handle.open(filename);
-        for(int i = 0;i < filename.size();i++)
-        {
-            if(filename[i] == '.')
-            {
-                break;
-            }
-            static_name.push_back(filename[i]);
-        }
+        std::string tmp;
+        bool slash_exist = false;
         if (!output_handle.is_open())
         {
             throw std::runtime_error("Failed to open file: " + filename);
         }
+    }
+
+    //set the static name
+
+    void set_static_name(std::string ifile_name)
+    {
+        for(int i = 0;i < ifile_name.size();i++)
+        {
+            if(ifile_name[i] == '.')
+            {
+                break;
+            }
+            if(ifile_name[i] == '/')
+            {
+                static_name.push_back('.');
+                continue;
+            }
+            static_name.push_back(ifile_name[i]);
+        }
+    }
+
+    void set_no_init_code()
+    {
+        is_init = false;
     }
 
     
@@ -862,6 +891,12 @@ public:
     void code_generator_main(command_type type,std::string arg1 = "",std::string arg2 = "") //arg1 and arg2 are optional
     {
         code = "";
+
+        if(code_num == 1&& is_init)
+        {
+            init_code();
+            code_num+=1;
+        }
         if(type == command_type::C_ARITHMETIC)
         {
             if(arg1 == "add")
@@ -935,6 +970,10 @@ public:
         else if(type == command_type::C_RETURN)
         {
             return_code_generator();
+        }
+        else if(type == command_type::C_CALL)
+        {
+            call_code_generator(arg1,arg2);
         }
 
         output_handle << code;
@@ -1059,6 +1098,7 @@ int main(int argc,char *argv[])
         code_writer cw(out_name);
         for (int i = 0; i < vm_file_name.size(); i++)
         {
+            cw.set_static_name(vm_file_name[i]);
             parser p{vm_file_name[i]};
             while(p.has_more_commands())
             {
@@ -1074,6 +1114,8 @@ int main(int argc,char *argv[])
             parser p{vm_file_name[i]};
             std::string out_name = output_file_name(vm_file_name[i]);
             code_writer cw(out_name);
+            cw.set_static_name(vm_file_name[i]);
+            cw.set_no_init_code();
             while(p.has_more_commands())
             {
                 p.advance();
